@@ -1,6 +1,7 @@
-import { Button, Col, Drawer, Input, Row, Select, Slider, Spin } from 'antd';
+import { Button, Col, Drawer, Input, Row, Select, Slider } from 'antd';
 import React, { ChangeEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { FilterOutlined } from '@ant-design/icons';
+import { useDebounce } from '@uidotdev/usehooks';
 import { Category, Product, QueryParams, RangePrice } from 'src/interface/home';
 import { useInfiniteQuery, useQuery } from 'react-query';
 import { CategoryService } from './../../services/category.service';
@@ -53,21 +54,28 @@ const HomePage: React.FC = () => {
   const [sort, setSort] = useState<string | undefined>(undefined);
   const [searchText, setSearchText] = useState<string>('');
   const [isOpen, setOpen] = useState<boolean>(false);
+  const debouncedSearchTerm = useDebounce(searchText, 1000);
 
-  const { data } = useQuery('category', () => {
-    return CategoryService.getCategory();
-  });
+  const { data } = useQuery(
+    'category',
+    () => {
+      return CategoryService.getCategory();
+    },
+    {
+      refetchOnWindowFocus: false
+    }
+  );
 
   const baseParams = useMemo<QueryParams>(
     () => ({
       categoryId,
       minPrice: rangePrice.minPrice?.toString(),
       maxPrice: rangePrice.maxPrice?.toString(),
-      q: searchText,
+      q: debouncedSearchTerm,
       order: sort,
       orderField: 'price'
     }),
-    [rangePrice, categoryId, sort, searchText]
+    [rangePrice, categoryId, sort, debouncedSearchTerm]
   );
 
   const {
@@ -76,14 +84,16 @@ const HomePage: React.FC = () => {
     fetchNextPage,
     hasNextPage
   } = useInfiniteQuery(
-    ['product', rangePrice, categoryId, sort, searchText],
+    ['product', rangePrice, categoryId, sort, debouncedSearchTerm],
     ({ pageParam }) => {
       return getProducts({ ...baseParams, page: pageParam ?? 1 });
     },
     {
       getNextPageParam: (lastPage, pages) => {
         return lastPage?.data?.page + 1;
-      }
+      },
+      refetchOnWindowFocus: false,
+      refetchInterval: 60000 //  all queries will continuously refetch at this frequency in milliseconds
     }
   );
 

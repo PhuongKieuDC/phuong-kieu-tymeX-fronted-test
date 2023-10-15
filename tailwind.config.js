@@ -9,6 +9,9 @@ export default {
       },
       screens: {
         xs: '320px'
+      },
+      boxShadow: {
+        ps: 'rgb(0 0 0 / 26%) 0px 25px 20px -20px'
       }
     }
   },
